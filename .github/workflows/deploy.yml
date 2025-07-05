@@ -1,21 +1,16 @@
-name: Deploy to AWS EKS via ECR
+name: Deploy Node.js App to EKS (No Docker)
 
 on:
   push:
     branches:
       - main
 
-env:
-  AWS_REGION: us-east-1
-  ECR_REPOSITORY: product-service
-  IMAGE_TAG: latest
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout source code
+    - name: Checkout code
       uses: actions/checkout@v3
 
     - name: Configure AWS credentials
@@ -23,29 +18,16 @@ jobs:
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
-
-    - name: Get ECR login token
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v1
-
-    - name: Build Docker image
-      run: |
-        IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
-        docker build -t $IMAGE_URI .
-        echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
-
-    - name: Push Docker image to ECR
-      run: |
-        docker push $IMAGE_URI
+        aws-region: ${{ secrets.AWS_REGION }}
 
     - name: Update kubeconfig
       run: |
         aws eks update-kubeconfig \
-          --name ${{ secrets.EKS_CLUSTER_NAME }} \
-          --region ${{ env.AWS_REGION }}
+          --region ${{ secrets.AWS_REGION }} \
+          --name ${{ secrets.EKS_CLUSTER_NAME }}
 
-    - name: Deploy to EKS
+    - name: Deploy to EKS without Docker
       run: |
-        sed -i "s|IMAGE_PLACEHOLDER|$IMAGE_URI|" k8s/deployment.yaml
-        kubectl apply -f k8s/
+        kubectl apply -f k8s/configmap.yaml
+        kubectl apply -f k8s/deployment.yaml
+        kubectl apply -f k8s/service.yaml

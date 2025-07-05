@@ -1,5 +1,32 @@
-containers:
-  - name: product-service
-    image: 637423553858.dkr.ecr.us-east-1.amazonaws.com/demo-project
-    ports:
-      - containerPort: 3000
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product-service-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: product-service
+  template:
+    metadata:
+      labels:
+        app: product-service
+    spec:
+      containers:
+        - name: product-service
+          image: node:18
+          command: ["sh", "-c"]
+          args:
+            - |
+              mkdir -p /app &&
+              cp /code/* /app/ &&
+              cd /app &&
+              npm install &&
+              node server.js
+          volumeMounts:
+            - name: code-volume
+              mountPath: /code
+      volumes:
+        - name: code-volume
+          configMap:
+            name: product-service-code
